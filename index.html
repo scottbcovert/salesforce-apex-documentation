@@ -4,9 +4,9 @@
 	<head>
 		<meta charset="utf-8">
 
-		<title>Queueable Apex</title>
+		<title>Apex Docs</title>
 
-		<meta name="description" content="Performing asynchronous logic within Salesforce">
+		<meta name="description" content="Automating Documentation for Salesforce Applications">
 		<meta name="author" content="Scott B Covert">
 
 		<meta name="apple-mobile-web-app-capable" content="yes" />
@@ -40,135 +40,102 @@
 
 			<div class="slides">
 				<section>
-					<h1>Queueable Apex</h1>
-					<h3>Performing asynchronous logic within Salesforce</h3>
-					<p><small>Presented by Scott Covert / <a href="https://twitter.com/scottbcovert" target="_blank">@scottbcovert</a></small></p>
+					<h1>Apex Docs</h1>
+					<h3>Automating Documentation for Salesforce Applications</h3>
+					<p><small>Presented by Scott Covert / <a href="http://bit.ly/22hpV5B" target="_blank">@scottbcovert</a></small></p>
 				</section>
 
 				<section>
 					<section>
-						<h2>Looking into the @future</h2>
-						<pre><code data-trim>
-global class MyFutureClass {
+						<h2>Don't Be Lazy!</h2>
+						<img style="width:90%" src="img/Lack_Of_Documentation.jpeg"/>
+						<aside class="notes">
+							<li>Don't let the next developer want to do this to you!</li>							
+						</aside>
+					</section>					
+				</section>
 
-  @future 
-  static void myMethod(String a, Integer i) {
-    System.debug('Method called with: ' + a + ' and ' + i);
-    // Perform long-running code
-  }
+				<section>
+					<h2>JavaDoc Meets Salesforce</h2>
+					<pre><code data-trim>
+/**
+* @author Scott Covert
+* @date 3/14/2016
+* @description Helper Methods for Account Trigger Handling
+*/
+public with sharing class AccountHelper {
+	
+    /** Constant representing Salesforce Website */
+    private static final String salesforceSite = 'www.salesforce.com';
+
+    /**
+    * @author Scott Covert
+    * @date 3/14/2016
+    * @description Updates website field of given accounts to the Salesforce homepage
+    * @param List A list of accounts that should have their website field updated
+    * @return List A list of accounts with their website field set to the Salesforce homepage
+    */
+    public static List&lt;Account&gt; updateWebsiteToSF(List&lt;Account&gt; accountList){
+        for(Account acct : accountList) {
+            acct.Website = salesforceSite;			
+        }				
+        return accountList;
+    }
 }
-						</code></pre>
-						<p>Allows you to kick-off long-running processes asynchronously to prevent CPU timeout</p>							
-						</ul>
-						<pre><code data-trim>
-  @future (callout=true)
-  public static void doCalloutFromFuture() {
-   //Add code to perform callout
-}						</code></pre>
-
-						<aside class="notes">
-							<ul>
-								<li>Adding the @future annotation allows a method to be called asynchronously</li>
-								<li>Popular use case: making a callout from within a Trigger or after a DML statement</li>
-							</ul>
-						</aside>
-					</section>
-					<section>
-						<h2>Limitations</h2>
+					</code></pre>					
+					<aside class="notes">
 						<ul>
-							<li>@future methods cannot call @future methods (including via triggers)</li>
-							<li>Parameters can only be instances/collections of primitive types (no passing SObjects)</li>
-							<li>Unknown execution order</li>
+							<li>ApexDocs was first developed by Aslam Bari and later improved by Steve Cox</li>
+							<li>Note the annotations used by ApexDocs: author, date, description, param, and return</li>
+							<li>Single-line comments will be interpreted as descriptions for class properties</li>
 						</ul>
-						<aside class="notes">
-							<ul>
-								<li>Future methods cannot call other future methods</li>
-								<li>Parameters can only be primitives or collections thereof</li>
-								<li>You have no guarantees one async method will fire before another even if it was initiated first</li>
-							</ul>
-						</aside>
-					</section>
-					<section>
-						<h2>Workaround</h2>
-						<img src="img/Workaround.jpeg"/>
-						<aside class="notes">
-							<li>Dan Appleman discusses a popular workaround to some asynchronous Apex limitations within his book, 'Advanced Apex Programming'</li>
-							<li>He also gave a great talk on this topic, as well as the topic of concurrency (which we'll see later is related) at DF13</li>
-						</aside>
-					</section>
-					<section>
-						<h2>Scheduler Ping Pong</h2>
-						<img src="img/Scheduled_Future.png" width="40%"/>
-						<br/>
-						<img src="img/Scheduled_Batch.png" width="40%"/>
-						<p style="font-size: .5em">* Slides taken from Dan Appleman's DF13 Session on Asynchronous Apex (<a href="https://www.youtube.com/watch?v=ZqqiIg_mynY" target="_blank">Presentation</a>) (<a href="http://www.slideshare.net/developerforce/design-patternsasynchronousapex" target="_blank">Slides</a>)</p>
-						<aside class="notes">
-							<li>Through self-aborting scheduled apex you can bounce between a scheduled job and a batch job, which restarts the scheduled apex upon finishing</li>
-							<li>Async requests can be stored within a custom object to act as an async queue</li>
-							<li>These records can store parameter information as a workaround for the restriction on parameters allowed within @future methods</li>
-							<li>These records can also store scheduled time and as the queue is queried they will execute in order</li>
-							<li>Technically the same can be done between scheduled apex and @future apex, but there are concurrency issues with this approach as we'll soon see</li>
-						</aside>
-					</section>
+					</aside>
 				</section>
-
+				
 				<section>
-					<section>
-						<h2>Queueable Apex</h2>
-						<img src="img/queueable_apex_elegant.jpg"/>
-						<aside class="notes">
-							<ul>
-								<li>Queueable apex provides job ids upon being enqueued, similar to batch apex</li>
-								<li>Queueable apex classes can store complex data types within member variables</li>
-								<li>Chaining jobs is possible without any sort of workarounds</li>
-								<li>This makes the Scheduler Ping Pong method obsolete; especially because with the release of Queueable Apex Salesforce slowed down the scheduler method to enforce a 5 minute delay time between chains</li>
-							</ul>
-						</aside>
-					</section>
-					<section>
-						<h2>Limitations</h2>
+					<h2>Ant Friendly</h2>
+					<pre><code data-trim>
+<!-- Generate Docs -->
+<target name="docs">
+    &lt;delete dir="${basedir}/Documentation" /&gt;
+    &lt;mkdir dir="${basedir}/Documentation" /&gt;
+    <java fork="true" failonerror="true" jar="lib/SfApexDoc.jar">
+        &lt;arg line="-s src/classes -t Documentation/ -a docAuthor.txt -h docHome.txt -p global,public,private,protected" /&gt;
+    </java>
+</target>						</code></pre>
+					<aside class="notes">
 						<ul>
-							<li>Count against shared async method call limit</li>
-							<li>50 jobs added to the queue within a single transaction</li>
-							<li>Only one job can be enqueued by queued apex</li>
+							<li>You can easily create an Ant target for executing ApexDocs after you've included the SfApexDoc.jar file in your project's lib folder</li>							
 						</ul>
-						<aside class="notes">
-							<ul>
-								<li>Each queued apex call counts against a shared governor limit regarding async method calls within 24 hours</li>
-								<li>You can enqueue only 50 queued apex jobs in one transaction</li>
-								<li>Only one job can be added to the queue by queued apex</li>
-								<li>Originally when this was first released in W15 you could only chain once, but now that limit has been removed</li>
-							</ul>
-						</aside>
-					</section>
-					<section>
-						<h2>Schmimitations</h2>
-						<img src="img/who_cares.jpg"/>
-						<aside class="notes">
-							<ul>
-								<li>Each queued apex call counts against a shared governor limit regarding async method calls within 24 hours, but this is not a big deal as it's 250,000 or the number of user licenses in your organization multiplied by 200, whichever is greater</li>
-								<li>You can enqueue 50 queued apex jobs in one transaction, but really you should only have to do this once and just create Async Request records elsewhere</li>
-								<li>Only one job can be added to the queue by queued apex; again this is fine since we will just be chaining to run through our async request records</li>
-							</ul>
-						</aside>
-					</section>
-					<section>
-						<h2>Chaining</h2>
-						<img src="img/Chaining_Queued_Apex.jpg"/>
-						<aside class="notes">
-							<ul>
-								<li></li>								
-							</ul>
-						</aside>
-					</section>
-				</section>
-				<section>
-					<img src="img/Live_Demo.jpg"/>
-					<p><a href="http://bit.ly/1WJkpol" target="_blank">Source</a></p>
+					</aside>
 				</section>
 
 				<section>
-					<img src="img/Questions.jpg"/>
+					<h2>Resources</h2>
+					<ul>
+						<li><a href="http://bit.ly/1SOFuim" target="_blank">JAR File</a></li>
+						<li><a href="http://bit.ly/1S13ahp" target="_blank">GitLab Repo</a></li>
+						<li><a href="http://bit.ly/1TKdQnL" target="_blank">Doc Format</a></li>
+						<li><a href="http://bit.ly/22g1Zmz" target="_blank">Usage</a></li>
+					</ul>
+					<aside class="notes">
+						<ul>
+							<li>For additional information and resources please see Steve Cox's GitLab repository</li>						
+						</ul>
+					</aside>					
+				</section>
+
+				<section>
+					<img src="img/Live_Demo.jpg"/>					
+				</section>
+
+				<section>
+					<img style="width:50%" src="img/Documentation_Done.jpg"/>
+					<p><a href="http://bit.ly/1WmsEa3" target="_blank">Source</a></p>
+				</section>
+
+				<section>
+					<img style="width:50%" src="img/Questions.jpeg"/>
 				</section>
 				
 			</div>
